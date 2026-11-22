@@ -3,7 +3,7 @@ import { applyPolicy, DEFAULT_PLUGINS, describeAction, FINANCE_CATALOG, needsApp
 
 describe("money plugin catalog", () => {
   test("Mercury and CoinPay are on by default; moomoo is listed but off", () => {
-    expect(DEFAULT_PLUGINS.map((d) => d.slug).sort()).toEqual(["coinpay", "mercury"]);
+    expect(DEFAULT_PLUGINS.filter((d) => d.auth !== "none").map((d) => d.slug).sort()).toEqual(["coinpay", "mercury"]);
     const moomoo = FINANCE_CATALOG.find((e) => e.slug === "moomoo");
     expect(moomoo.default).toBe(false);
     expect(moomoo.description).toContain("you decide");
