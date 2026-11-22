@@ -317,3 +317,44 @@ export function fetchJson(
 export function parseWwwAuthenticate(header: string): Record<string, string>;
 export function protectedResourceCandidates(resource: URL): string[];
 export function authServerCandidates(issuer: string): string[];
+
+// ── money plugins (src/money.js) ────────────────────────────────────────────
+
+export type MoneyKind = "banking" | "crypto" | "trading";
+export type TradingMode = "paper" | "live";
+export interface PluginPolicy {
+  slug: string;
+  kind: MoneyKind;
+  /** Tools that only read. Exact names; anything else asks first. */
+  readOnly: ReadonlySet<string>;
+  /** OAuth scopes to ask for instead of everything the server offers. */
+  scopes?: string[];
+  /** Brokerage: tools that place, change or cancel PAPER orders. */
+  paperWrites?: ReadonlySet<string>;
+}
+export interface FinanceCatalogEntry {
+  slug: string;
+  name: string;
+  url: string;
+  description: string;
+  homepage: string;
+  icon: string;
+  /** On for every account (listed and switched on, not signed in). */
+  default: boolean;
+}
+export interface ActionSummary {
+  title: string;
+  lines: { label: string; value: string }[];
+  account?: TradingMode;
+  note?: string;
+}
+export const MODEL_CAN_BE_WRONG: string;
+export const FINANCE_CATALOG: readonly FinanceCatalogEntry[];
+export const DEFAULT_PLUGINS: readonly FinanceCatalogEntry[];
+export const POLICIES: Record<string, PluginPolicy>;
+export function policyFor(url: string): PluginPolicy | null;
+export function needsConfirmation(policy: PluginPolicy, tool: string): boolean;
+export function visibleInMode(policy: PluginPolicy, tool: string, mode: TradingMode): boolean;
+export function applyPolicy<T extends { name: string; annotations?: object }>(policy: PluginPolicy | null, tools: T[], mode?: TradingMode): T[];
+export function describeAction(policy: PluginPolicy | null, tool: string, args: Record<string, unknown>): ActionSummary | null;
+export function redactLog(v: unknown): string;
