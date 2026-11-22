@@ -90,7 +90,7 @@ Tool results keep the full text for the UI (`text`) and a ~16 KB cut for the mod
 
 ## Catalog
 
-`CATALOG` ships c0mpute hosting and ThreatCrush. `makeCatalog(extra, { replace })` merges your
+`CATALOG` ships c0mpute hosting, ThreatCrush and CheapestWayz (on by default: `default: true`, sign-in on first use). `makeCatalog(extra, { replace })` merges your
 own entries (an entry with an empty `url` removes a built-in one).
 
 ## Server-side safety

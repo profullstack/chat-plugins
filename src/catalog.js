@@ -18,6 +18,18 @@ export const CATALOG = Object.freeze([
     description: "File-hash, IP and domain reputation, plus your org's scan and pentest findings.",
     homepage: "https://threatcrush.com",
   }),
+  // On by default (DEFAULT_PLUGINS): reading works without an account; earning tools (referral
+  // link, earnings) and posting sign in on first use with OAuth 2.1, by email link or CoinPay.
+  Object.freeze({
+    slug: "cheapestwayz",
+    name: "CheapestWayz",
+    url: "https://cheapestwayz.com/mcp",
+    description:
+      "Find the cheapest way to get something done: priced DIY, online and local-business methods ranked by cost, local quote requests, and your referral link and earnings. Sign in with your CheapestWayz email link or CoinPay.",
+    homepage: "https://cheapestwayz.com",
+    icon: "https://cheapestwayz.com/favicon.svg",
+    default: true,
+  }),
 ]);
 
 /**
