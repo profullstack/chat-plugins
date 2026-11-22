@@ -7,7 +7,7 @@ describe("docs plugins", () => {
     expect(ms.url).toBe("https://learn.microsoft.com/api/mcp");
     expect(ms.default).toBe(true);
     expect(ms.auth).toBe("none");
-    expect(DEFAULT_PLUGINS.map((d) => d.slug)).toEqual(["mercury", "coinpay", "microsoft-learn"]);
+    expect(DEFAULT_PLUGINS.map((d) => d.slug)).toEqual(["mercury", "coinpay", "microsoft-learn", "cheapestwayz"]);
     // Not a money plugin: no confirmation policy applies.
     expect(policyFor(ms.url)).toBeNull();
   });

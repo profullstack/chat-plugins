@@ -201,11 +201,15 @@ describe("seal", () => {
 });
 
 describe("catalog + ssrf helpers", () => {
-  test("catalog has c0mpute and threatcrush, overridable", () => {
+  test("catalog has c0mpute, threatcrush and cheapestwayz, overridable", () => {
     expect(CATALOG.find((e) => e.slug === "c0mpute").url).toBe("https://c0mpute.com/api/mcp");
     expect(CATALOG.find((e) => e.slug === "threatcrush").url).toBe("https://threatcrush.com/api/mcp");
+    const cwz = CATALOG.find((e) => e.slug === "cheapestwayz");
+    expect(cwz.url).toBe("https://cheapestwayz.com/mcp");
+    expect(cwz.default).toBe(true);
+    expect(cwz.auth).toBeUndefined(); // sign-in on first use, never a shared account
     const c = makeCatalog([{ slug: "mine", name: "Mine", url: "https://mine.example/mcp" }, { slug: "threatcrush", name: "x", url: "" }]);
-    expect(c.map((e) => e.slug)).toEqual(["c0mpute", "mine"]);
+    expect(c.map((e) => e.slug)).toEqual(["c0mpute", "cheapestwayz", "mine"]);
   });
   test("resolvePluginInput", () => {
     expect(resolvePluginInput("c0mpute")).toMatchObject({ slug: "c0mpute", url: "https://c0mpute.com/api/mcp" });

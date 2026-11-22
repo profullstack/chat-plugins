@@ -159,6 +159,8 @@ export interface CatalogEntry {
   description?: string;
   homepage?: string;
   icon?: string;
+  /** On for every account (in DEFAULT_PLUGINS): listed and switched on, signed in on first use. */
+  default?: boolean;
 }
 
 export interface OpenAITool {
@@ -356,7 +358,7 @@ export interface ActionSummary {
 }
 export const MODEL_CAN_BE_WRONG: string;
 export const FINANCE_CATALOG: readonly FinanceCatalogEntry[];
-/** Everything on for every account: money plugins (sign-in on first use), then docs plugins (auth "none"). */
+/** Everything on for every account: money plugins (sign-in on first use), docs plugins (auth "none"), then CATALOG defaults (sign-in on first use). */
 export const DEFAULT_PLUGINS: readonly FinanceCatalogEntry[];
 export const DOCS_CATALOG: readonly DocsCatalogEntry[];
 /** The one-line CLI command that registers an entry, e.g. `claude mcp add --transport http <slug> <url>`. */
