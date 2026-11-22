@@ -125,3 +125,22 @@ const tools = applyPolicy(policy, await listTools(plugin), plugin.tradingMode ??
 moomoo in paper mode offers reads plus `sim_trade_*` orders only; live order
 tools appear only in `"live"` mode, and still ask. `redactLog()` masks tokens,
 long digit runs and amounts before anything reaches a log.
+
+## Docs plugins (0.3.0)
+
+`DOCS_CATALOG` lists public, read-only documentation servers that need no
+sign-in. It ships Microsoft Learn (`https://learn.microsoft.com/api/mcp`:
+docs search, code sample search, page fetch), on by default.
+
+`DEFAULT_PLUGINS` now holds every default: the money plugins, then the docs
+plugins. A docs entry carries `auth: "none"`; seed it as ready to use, not as
+"needs sign-in":
+
+```js
+import { DEFAULT_PLUGINS, DOCS_CATALOG, mcpAddCommand } from "@profullstack/chat-plugins";
+
+for (const d of DEFAULT_PLUGINS) seed(userId, d, d.auth === "none" ? "none" : "sign-in-on-first-use");
+
+mcpAddCommand(DOCS_CATALOG[0]);          // claude mcp add --transport http microsoft-learn https://learn.microsoft.com/api/mcp
+mcpAddCommand(DOCS_CATALOG[0], "codex"); // codex mcp add microsoft-learn --url https://learn.microsoft.com/api/mcp
+```

@@ -39,3 +39,4 @@ export {
   describeAction,
   redactLog,
 } from "./money.js";
+export { DOCS_CATALOG, mcpAddCommand } from "./docs.js";

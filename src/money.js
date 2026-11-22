@@ -12,6 +12,8 @@
 // Shared by c0mpute chat and Infernet chat so the two cannot drift. No Node
 // imports: describeAction() also runs in the browser.
 
+import { DOCS_CATALOG } from "./docs.js";
+
 export const MODEL_CAN_BE_WRONG = "The model can be wrong. You decide: nothing here runs until you approve it.";
 export const FINANCE_CATALOG = Object.freeze([
   {
@@ -42,7 +44,9 @@ export const FINANCE_CATALOG = Object.freeze([
     default: false
   }
 ]);
-export const DEFAULT_PLUGINS = FINANCE_CATALOG.filter((e) => e.default);
+// Everything apps switch on for every account: the money plugins each person
+// signs in to, then the docs plugins that need no sign-in (auth: "none").
+export const DEFAULT_PLUGINS = Object.freeze([...FINANCE_CATALOG.filter((e) => e.default), ...DOCS_CATALOG.filter((e) => e.default)]);
 const MERCURY_READ = new Set([
   "getCurrentDate",
   "getAccount",

@@ -341,6 +341,12 @@ export interface FinanceCatalogEntry {
   icon: string;
   /** On for every account (listed and switched on, not signed in). */
   default: boolean;
+  /** "none": the server needs no sign-in, so a seeded row is ready to use. Absent: sign-in on first use. */
+  auth?: "none";
+}
+/** A public, read-only documentation server that needs no sign-in. */
+export interface DocsCatalogEntry extends FinanceCatalogEntry {
+  auth: "none";
 }
 export interface ActionSummary {
   title: string;
@@ -350,7 +356,11 @@ export interface ActionSummary {
 }
 export const MODEL_CAN_BE_WRONG: string;
 export const FINANCE_CATALOG: readonly FinanceCatalogEntry[];
+/** Everything on for every account: money plugins (sign-in on first use), then docs plugins (auth "none"). */
 export const DEFAULT_PLUGINS: readonly FinanceCatalogEntry[];
+export const DOCS_CATALOG: readonly DocsCatalogEntry[];
+/** The one-line CLI command that registers an entry, e.g. `claude mcp add --transport http <slug> <url>`. */
+export function mcpAddCommand(entry: { slug: string; url: string }, cli?: "claude" | "gemini" | "qwen" | "codex" | "opencode"): string;
 export const POLICIES: Record<string, PluginPolicy>;
 export function policyFor(url: string): PluginPolicy | null;
 export function needsConfirmation(policy: PluginPolicy, tool: string): boolean;
