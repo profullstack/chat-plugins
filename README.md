@@ -103,3 +103,25 @@ link-local, CGNAT, multicast and reserved ranges, redirects re-checked hop by ho
 ## License
 
 MIT
+
+## Money plugins (0.2.0)
+
+`FINANCE_CATALOG` lists Mercury (business banking), CoinPay (crypto payments)
+and moomoo (brokerage and trading); `DEFAULT_PLUGINS` are the ones apps turn
+on for every account (Mercury and CoinPay; each person signs in to their own
+account). The confirmation gate goes in your tool-call layer:
+
+```js
+import { applyPolicy, describeAction, policyFor, listTools } from "@profullstack/chat-plugins";
+
+const policy = policyFor(plugin.url);              // by server, not slug
+const tools = applyPolicy(policy, await listTools(plugin), plugin.tradingMode ?? "paper");
+// Only allowlisted reads run alone; every other tool (and any unknown name)
+// is destructiveHint: true, so needsApproval() stops the loop for the person.
+// describeAction(policy, tool, args) is the approval card: amount, currency,
+// from, to, memo; or symbol, side, qty, type, prices, estimated cost, paper/live.
+```
+
+moomoo in paper mode offers reads plus `sim_trade_*` orders only; live order
+tools appear only in `"live"` mode, and still ask. `redactLog()` masks tokens,
+long digit runs and amounts before anything reaches a log.

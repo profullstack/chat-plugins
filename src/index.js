@@ -27,3 +27,15 @@ export { toOpenAITools, toolName, buildToolIndex, resolveTool, needsApproval, sl
 export { runToolLoop, iterateToolLoop, parseToolCall, normalizeReply, toolPrompt, wrapToolResult } from "./loop.js";
 export { CATALOG, makeCatalog, resolvePluginInput, uniqueSlug } from "./catalog.js";
 export { sealToken, openToken } from "./seal.js";
+export {
+  MODEL_CAN_BE_WRONG,
+  FINANCE_CATALOG,
+  DEFAULT_PLUGINS,
+  POLICIES,
+  policyFor,
+  needsConfirmation,
+  visibleInMode,
+  applyPolicy,
+  describeAction,
+  redactLog,
+} from "./money.js";
