@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { applyPolicy, DEFAULT_PLUGINS, describeAction, FINANCE_CATALOG, needsApproval, needsConfirmation, POLICIES, policyFor, redactLog } from "../src/index.js";
+import { applyPolicy, DEFAULT_PLUGINS, describeAction, invoiceTotals, FINANCE_CATALOG, needsApproval, needsConfirmation, POLICIES, policyFor, redactLog } from "../src/index.js";
 
 describe("money plugin catalog", () => {
   test("Mercury and CoinPay are on by default; moomoo is listed but off", () => {
@@ -83,6 +83,70 @@ describe("approval card", () => {
     expect(s.lines.find((x) => x.label === "Amount")?.value).toContain("300");
     expect(s.lines.find((x) => x.label === "Currency")?.value).toBe("USD");
     expect(s.lines.find((x) => x.label === "To")?.value).toBe("c1");
+  });
+
+  const card = (tool, args) => {
+    const s = describeAction(POLICIES.coinpay, tool, args);
+    return (l) => s.lines.find((x) => x.label === l)?.value;
+  };
+
+  test("a percent discount: subtotal, discount and the total after it, never the discount value as the amount", () => {
+    const get = card("invoice_create_draft", { clientId: "c1", lineItems: [{ description: "Consulting", quantity: 2, unit_price: 150 }], discount: { type: "percent", value: 10 } });
+    expect(get("Subtotal")).toBe("300 (1 line item)");
+    expect(get("Discount")).toBe("10% = -30");
+    expect(get("Amount")).toBe("270 total (300 subtotal - 30 discount)");
+    expect(get("Amount")).not.toMatch(/^10\b/);
+    expect(get("Line items")).toBe("2 x 150 Consulting");
+    expect(get("Currency")).toBe("USD");
+    expect(get("Tax")).toBeUndefined();
+  });
+
+  test("a fixed discount", () => {
+    const get = card("invoice_create_draft", { lineItems: [{ description: "a", quantity: 1, unit_price: 100 }, { description: "b", quantity: 3, unit_price: "50.5" }], discount: { type: "fixed", value: 25 } });
+    expect(get("Subtotal")).toBe("251.5 (2 line items)");
+    expect(get("Discount")).toBe("fixed -25");
+    expect(get("Amount")).toBe("226.5 total (251.5 subtotal - 25 discount)");
+  });
+
+  test("tax on its share of the discounted subtotal, like CoinPay's server", () => {
+    const get = card("invoice_create_draft", {
+      lineItems: [{ description: "taxed", quantity: 2, unit_price: 150, tax_rate: 8 }, { description: "exempt", quantity: 1, unit_price: 100 }],
+      discount: { type: "percent", value: 10 },
+    });
+    // subtotal 400, discount 40 (30 on the taxed line), tax 8% of 270 = 21.6
+    expect(get("Subtotal")).toBe("400 (2 line items)");
+    expect(get("Discount")).toBe("10% = -40");
+    expect(get("Tax")).toBe("+21.6 (on 1 of 2 lines)");
+    expect(get("Amount")).toBe("381.6 total (400 subtotal - 40 discount + 21.6 tax)");
+    expect(invoiceTotals([{ quantity: 1, unit_price: 10, tax_rate: 5 }]).total).toBe(1050n);
+  });
+
+  test("no line items: a plain amount is shown; next to a discount or tax it is not guessed", () => {
+    expect(card("payment_create", { amount: 42, currency: "USDC" })("Amount")).toBe("42");
+    const adj = card("payment_create", { amount: 42, discount: { type: "fixed", value: 2 } });
+    expect(adj("Amount")).toBe("see details");
+    expect(adj("Details")).toContain('"discount"');
+    // A nested value inside a discount/tax object is never the amount.
+    expect(card("thing_create", { discount: { value: 10 } })("Amount")).toBe("see details");
+    expect(card("thing_create", { order: { amount: 7 } })("Amount")).toBe("7");
+    expect(card("invoice_send", { invoiceId: "inv_1" })("Amount")).toBeUndefined();
+  });
+
+  test("line items that do not add up unambiguously show the raw items, not a number", () => {
+    for (const args of [
+      { lineItems: [{ quantity: "two", unit_price: 150 }] },
+      { lineItems: [{ quantity: 1 }] },
+      { lineItems: [{ quantity: 1, unit_price: 10 }], discount: { value: 10 } },
+      { lineItems: [{ quantity: 1, unit_price: 10 }], discount: { type: "fixed", value: 50 } },
+      { lineItems: [{ quantity: 1, unit_price: 10 }], amount: 99 },
+      { lineItems: [] },
+    ]) {
+      const get = card("invoice_create_draft", args);
+      expect(get("Amount")).toStartWith("see details");
+      expect(get("Line items")).toBe(JSON.stringify(args.lineItems));
+    }
+    // A matching amount is fine.
+    expect(card("invoice_create_draft", { lineItems: [{ quantity: 1, unit_price: 10 }], amount: 10 })("Amount")).toBe("10 total");
   });
 
   test("an order shows symbol, side, quantity, type, prices, estimated cost and paper vs live", () => {
