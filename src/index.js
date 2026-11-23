@@ -37,5 +37,7 @@ export {
   visibleInMode,
   applyPolicy,
   describeAction,
+  invoiceTotals,
+  AMOUNT_SEE_DETAILS,
   redactLog,
 } from "./money.js";

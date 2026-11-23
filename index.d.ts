@@ -357,4 +357,11 @@ export function needsConfirmation(policy: PluginPolicy, tool: string): boolean;
 export function visibleInMode(policy: PluginPolicy, tool: string, mode: TradingMode): boolean;
 export function applyPolicy<T extends { name: string; annotations?: object }>(policy: PluginPolicy | null, tools: T[], mode?: TradingMode): T[];
 export function describeAction(policy: PluginPolicy | null, tool: string, args: Record<string, unknown>): ActionSummary | null;
+/** Shown as the Amount when the arguments do not pin the amount down; the raw line items or arguments follow. */
+export const AMOUNT_SEE_DETAILS: string;
+/** CoinPay-style invoice totals in integer cents: subtotal, discount (percent|fixed), per-line tax_rate on the discounted share, total. `{ error }` when the input is ambiguous. */
+export function invoiceTotals(
+  items: unknown,
+  discount?: unknown
+): { error: string } | { error?: undefined; subtotal: bigint; discount: bigint; discountLabel: string; tax: bigint; taxedLines: number; total: bigint; lines: unknown[] };
 export function redactLog(v: unknown): string;
