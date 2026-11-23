@@ -263,6 +263,8 @@ export function applyPolicy(policy, tools, mode = "paper") {
   return tools.filter((t) => visibleInMode(policy, t.name, mode)).map((t) => needsConfirmation(policy, t.name) ? { ...t, annotations: { ...t.annotations ?? {}, readOnlyHint: false, destructiveHint: true } } : { ...t, annotations: { ...t.annotations ?? {}, readOnlyHint: true, destructiveHint: false } });
 }
 const str = (v) => v === undefined || v === null ? "" : typeof v === "string" ? v : typeof v === "number" || typeof v === "boolean" ? String(v) : JSON.stringify(v);
+// Keys that hold an adjustment to an amount rather than the amount itself.
+const ADJUSTMENT_KEY = /discount|tax|fee|tip|coupon|rebate|credit|adjust|shipping/i;
 function pick(args, names) {
   const norm = (k) => k.toLowerCase().replace(/[_-]/g, "");
   const want = names.map(norm);
@@ -277,7 +279,11 @@ function pick(args, names) {
   const top = scan(args);
   if (top)
     return top;
-  for (const v of Object.values(args)) {
+  // One level down for wrapped arguments ({ payment: { amount } }), but never
+  // into a discount, tax or fee object: its `value`/`amount` is an adjustment,
+  // not what the action moves.
+  for (const [k, v] of Object.entries(args)) {
+    if (ADJUSTMENT_KEY.test(k)) continue;
     if (v && typeof v === "object" && !Array.isArray(v)) {
       const inner = scan(v);
       if (inner)
@@ -330,24 +336,113 @@ function tradingSummary(tool, args) {
   lines.push({ label: "Account", value: paper ? "PAPER (simulated, no real money)" : "LIVE (real money)" });
   return { title, lines, account: paper ? "paper" : "live", note: MODEL_CAN_BE_WRONG };
 }
+// Invoice arithmetic in integer cents, the same as CoinPay's server
+// (computeInvoiceTotals): subtotal of quantity x unit_price, then the discount
+// (percent of the subtotal, or a fixed amount), then each line's tax_rate on
+// its share of the discounted subtotal. Returns { error } instead of a number
+// whenever the arguments do not pin the total down.
+const toNum = (v) => typeof v === "number" ? (Number.isFinite(v) ? v : null) : typeof v === "string" && v.trim() !== "" ? num(v) : null;
+const cents = (n) => BigInt(Math.round(n * 100));
+const divRound = (a, b) => (a * 2n + b) / (b * 2n);
+const money = (c) => (Number(c) / 100).toLocaleString("en-US", { maximumFractionDigits: 2 });
+export function invoiceTotals(items, discount) {
+  if (!Array.isArray(items) || items.length === 0) return { error: "no line items" };
+  const lines = [];
+  for (const [i, it] of items.entries()) {
+    if (!it || typeof it !== "object" || Array.isArray(it)) return { error: `line ${i + 1} is not an item` };
+    const q = toNum(it.quantity);
+    const p = toNum(it.unit_price ?? it.unitPrice);
+    const r = it.tax_rate ?? it.taxRate;
+    const rate = r === undefined || r === null || r === "" ? 0 : toNum(r);
+    if (q === null || q < 0) return { error: `line ${i + 1} has no usable quantity` };
+    if (p === null || p < 0) return { error: `line ${i + 1} has no usable unit_price` };
+    if (rate === null || rate < 0) return { error: `line ${i + 1} has an unusable tax_rate` };
+    lines.push({ c: divRound(BigInt(Math.round(q * 1e4)) * cents(p), 10000n), rate, q, p, d: it.description });
+  }
+  const subtotal = lines.reduce((s, l) => s + l.c, 0n);
+  let off = 0n;
+  let discountLabel = "";
+  if (discount !== undefined && discount !== null) {
+    const type = discount && typeof discount === "object" ? discount.type : undefined;
+    const value = discount && typeof discount === "object" ? toNum(discount.value) : null;
+    if ((type !== "percent" && type !== "fixed") || value === null || value < 0) return { error: "the discount is not {type: percent|fixed, value}" };
+    if (type === "percent" && value > 100) return { error: "the discount is over 100%" };
+    off = type === "percent" ? divRound(subtotal * BigInt(Math.round(value * 1000)), 100000n) : cents(value);
+    if (off > subtotal) return { error: "the discount is larger than the subtotal" };
+    discountLabel = type === "percent" ? `${value}% = -${money(off)}` : `fixed -${money(off)}`;
+  }
+  const share = lines.map(() => 0n);
+  if (off > 0n) {
+    let given = 0n;
+    let last = -1;
+    lines.forEach((l, i) => {
+      if (l.c === 0n) return;
+      last = i;
+      share[i] = (l.c * off) / subtotal;
+      given += share[i];
+    });
+    share[last] += off - given;
+  }
+  const tax = lines.reduce((s, l, i) => s + (l.rate ? divRound((l.c - share[i]) * BigInt(Math.round(l.rate * 1000)), 100000n) : 0n), 0n);
+  const taxed = lines.filter((l) => l.rate).length;
+  return { subtotal, discount: off, discountLabel, tax, taxedLines: taxed, total: subtotal - off + tax, lines };
+}
+function describeLines(items) {
+  const parts = items.map((it) => {
+    if (!it || typeof it !== "object") return str(it);
+    const d = str(it.description ?? it.name ?? "");
+    return `${str(it.quantity)} x ${str(it.unit_price ?? it.unitPrice)}${d ? ` ${d}` : ""}${it.tax_rate ? ` (+${str(it.tax_rate)}% tax)` : ""}`;
+  });
+  const s = parts.join("; ");
+  return s.length > 300 ? `${s.slice(0, 299)}…` : s;
+}
+const raw = (v) => {
+  const s = str(v);
+  return s.length > 500 ? `${s.slice(0, 499)}…` : s;
+};
+export const AMOUNT_SEE_DETAILS = "see details";
 function moneySummary(kind, tool, args) {
   const lines = [];
   const add = (label, value) => {
     if (value)
       lines.push({ label, value });
   };
-  let amount = pick(args, ["amount", "amountUsd", "value", "total", "paymentAmount"]);
+  const given = pick(args, ["amount", "amountUsd", "value", "total", "paymentAmount"]);
   let currency = pick(args, ["currency", "currencyCode", "asset", "coin"]);
-  const items = Array.isArray(args.lineItems) ? args.lineItems : null;
-  if (!amount && items) {
-    const t = items.reduce((s, i) => s + (Number(i?.quantity) || 0) * (Number(i?.unit_price) || 0), 0);
-    amount = `${t.toLocaleString("en-US", { maximumFractionDigits: 8 })} before tax and discount (${items.length} line item${items.length === 1 ? "" : "s"})`;
-    if (!currency)
-      currency = "USD";
-  }
+  const items = args.lineItems ?? args.line_items;
   if (typeof args.minutes === "number")
     add("Time", `${args.minutes} minutes`);
-  add("Amount", amount);
+  if (items !== undefined) {
+    // An itemised invoice: the amount is what the items add up to, never a
+    // number found elsewhere in the arguments.
+    const t = invoiceTotals(items, args.discount);
+    if (t.error || (given && (num(given) === null || cents(num(given)) !== t.total))) {
+      add("Amount", `${AMOUNT_SEE_DETAILS} (${t.error ?? `the amount given (${given}) does not match the line items`})`);
+      add("Line items", raw(items));
+      if (args.discount !== undefined) add("Discount", raw(args.discount));
+    } else {
+      const n = t.lines.length;
+      add("Subtotal", `${money(t.subtotal)} (${n} line item${n === 1 ? "" : "s"})`);
+      add("Discount", t.discountLabel);
+      if (t.taxedLines) add("Tax", `+${money(t.tax)} (on ${t.taxedLines} of ${n} line${n === 1 ? "" : "s"})`);
+      const how = [`${money(t.subtotal)} subtotal`];
+      if (t.discount > 0n) how.push(`- ${money(t.discount)} discount`);
+      if (t.taxedLines) how.push(`+ ${money(t.tax)} tax`);
+      add("Amount", `${money(t.total)} total${how.length > 1 ? ` (${how.join(" ")})` : ""}`);
+      add("Line items", describeLines(items));
+    }
+    if (!currency) currency = "USD";
+  } else {
+    // A discount, tax or fee next to an amount leaves it unclear whether the
+    // amount is before or after it: show the arguments instead of a guess.
+    const adjustments = Object.keys(args).filter((k) => ADJUSTMENT_KEY.test(k) && args[k] !== null && args[k] !== undefined && args[k] !== "");
+    if (adjustments.length) {
+      add("Amount", AMOUNT_SEE_DETAILS);
+      add("Details", raw(args));
+    } else {
+      add("Amount", given);
+    }
+  }
   add("Currency", currency);
   add("From", pick(args, ["fromAccountId", "sourceAccountId", "from", "accountId", "fromAccount", "businessId", "fromWallet"]));
   add("To", pick(args, ["recipientId", "toAccountId", "destinationAccountId", "to", "recipient", "toAddress", "address", "clientId", "contractorId", "projectId"]));
