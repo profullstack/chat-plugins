@@ -7,9 +7,18 @@ describe("docs plugins", () => {
     expect(ms.url).toBe("https://learn.microsoft.com/api/mcp");
     expect(ms.default).toBe(true);
     expect(ms.auth).toBe("none");
-    expect(DEFAULT_PLUGINS.map((d) => d.slug)).toEqual(["mercury", "coinpay", "microsoft-learn", "cheapestwayz"]);
+    expect(DEFAULT_PLUGINS.map((d) => d.slug)).toEqual(["mercury", "coinpay", "microsoft-learn", "pit-world", "cheapestwayz"]);
     // Not a money plugin: no confirmation policy applies.
     expect(policyFor(ms.url)).toBeNull();
+  });
+
+  test("pit.world web search is on by default and needs no sign-in", () => {
+    const pit = DOCS_CATALOG.find((e) => e.slug === "pit-world");
+    expect(pit.url).toBe("https://pit.world/mcp");
+    expect(pit.default).toBe(true);
+    expect(pit.auth).toBe("none");
+    expect(policyFor(pit.url)).toBeNull();
+    expect(mcpAddCommand(pit)).toBe("claude mcp add --transport http pit-world https://pit.world/mcp");
   });
 
   test("the add command is the documented one-liner, per CLI", () => {
