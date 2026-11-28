@@ -1,6 +1,6 @@
 {
   "name": "@profullstack/chat-plugins",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "type": "module",
   "description": "Chat plugins = remote MCP servers, with less hoops than connectors: paste a URL or pick from a catalog, sign-in is automatic (OAuth 2.1 + DCR + PKCE), and an agent loop runs the tools even on models with no native tool calling. Zero dependencies.",
   "keywords": [

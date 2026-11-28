@@ -1,4 +1,4 @@
-// Docs plugins: public, read-only documentation servers that need no sign-in.
+// Docs and search plugins: public, read-only servers that need no sign-in.
 // Entries with `default: true` are on for every account in apps that seed
 // DEFAULT_PLUGINS (c0mpute chat, Infernet chat). `auth: "none"` tells the app
 // to seed the row as ready to use, not as "needs sign-in".
@@ -15,6 +15,17 @@ export const DOCS_CATALOG = Object.freeze([
       "Official Microsoft and Azure documentation in chat: search the docs, find code samples and read full pages as markdown. Read-only, no sign-in.",
     homepage: "https://learn.microsoft.com",
     icon: "https://learn.microsoft.com/favicon.ico",
+    default: true,
+    auth: "none",
+  }),
+  Object.freeze({
+    slug: "pit-world",
+    name: "pit.world (web search)",
+    url: "https://pit.world/mcp",
+    description:
+      "Private web search in chat: search the web (no logs, no tracking), summarize a result page, search the pit.world corpus, look up business listings and Moshpit names. Read-only, no sign-in.",
+    homepage: "https://pit.world",
+    icon: "https://pit.world/favicon.svg",
     default: true,
     auth: "none",
   }),
